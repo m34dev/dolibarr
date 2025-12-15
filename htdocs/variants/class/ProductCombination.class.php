@@ -753,7 +753,7 @@ class ProductCombination
 	 * @param bool|float 		$forced_weightvar 	If the weight variation is forced
 	 * @param bool|string 		$forced_refvar 		If the reference is forced
 	 * @param string 	    	$ref_ext            External reference
-	 * @param bool				$clone_categories	Add parent product categroies to product combination
+	 * @param bool				$clone_categories	Add parent product categories to the product combination
 	 * @return int<-1,1>							Return integer <0 KO, >0 OK
 	 */
 	public function createProductCombination(User $user, Product $product, array $combinations, array $variations, $price_var_percent = false, $forced_pricevar = false, $forced_weightvar = false, $forced_refvar = false, $ref_ext = '', $clone_categories = false)
