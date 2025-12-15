@@ -753,14 +753,15 @@ class ProductCombination
 	 * @param Product                   $product                Parent Product
 	 * @param array<int,int>            $combinations           Attribute and value combinations.
 	 * @param array<int,array<int,array{weight:string|float,price:string|float}>> $variations 	Price and weight variations (example: $variations[fk_product_attribute][fk_product_attribute_value]['weight'])
-	 * @param bool|bool[]               $price_var_percent      Is the price variation value a relative variation (in %)? (it is an array if global constant "PRODUIT_MULTIPRICES" is on)
-	 * @param false|float|float[]       $forced_pricevar        Value of the price variation if it is forced ; in currency or percent. (it is an array if global constant "PRODUIT_MULTIPRICES" is on)
-	 * @param false|float               $forced_weightvar       Value of the weight variation if it is forced
-	 * @param false|string              $forced_refvar          Value of the reference if it is forced
-	 * @param string                    $ref_ext                External reference
-	 * @return int<-1,1>                                        Return integer <0 KO, >0 OK
+	 * @param bool|array 		$price_var_percent 	Is the price variation a relative variation?
+	 * @param bool|float 		$forced_pricevar 	If the price variation is forced
+	 * @param bool|float 		$forced_weightvar 	If the weight variation is forced
+	 * @param bool|string 		$forced_refvar 		If the reference is forced
+	 * @param string 	    	$ref_ext            External reference
+	 * @param bool				$clone_categories	Add parent product categroies to product combination
+	 * @return int<-1,1>							Return integer <0 KO, >0 OK
 	 */
-	public function createProductCombination(User $user, Product $product, array $combinations, array $variations, $price_var_percent = false, $forced_pricevar = false, $forced_weightvar = false, $forced_refvar = false, $ref_ext = '')
+	public function createProductCombination(User $user, Product $product, array $combinations, array $variations, $price_var_percent = false, $forced_pricevar = false, $forced_weightvar = false, $forced_refvar = false, $ref_ext = '', $clone_categories = false)
 	{
 		global $conf;
 
@@ -964,6 +965,16 @@ class ProductCombination
 		}
 
 		$newcomb->fk_product_child = $newproduct->id;
+
+		if ($clone_categories) {
+			$clone_result = $newproduct->cloneCategories($product->id, $newproduct->id);
+			if ($clone_result < 0) {
+				$this->error = $newproduct->error;
+				$this->errors = $newproduct->errors;
+				$this->db->rollback();
+				return -1;
+			}
+		}
 
 		if ($newcomb->update($user) < 0) {
 			$this->error = $newcomb->error;
