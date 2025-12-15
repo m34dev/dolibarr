@@ -4,6 +4,7 @@
  * Copyright (C) 2022   	Open-Dsi				<support@open-dsi.fr>
  * Copyright (C) 2024		MDW						<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024       Frédéric France         <frederic.france@free.fr>
+ * Copyright (C) 2025		William Mead			<william@m34d.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -752,9 +753,10 @@ class ProductCombination
 	 * @param bool|float 		$forced_weightvar 	If the weight variation is forced
 	 * @param bool|string 		$forced_refvar 		If the reference is forced
 	 * @param string 	    	$ref_ext            External reference
+	 * @param bool				$clone_categories	Add parent product categroies to product combination
 	 * @return int<-1,1>							Return integer <0 KO, >0 OK
 	 */
-	public function createProductCombination(User $user, Product $product, array $combinations, array $variations, $price_var_percent = false, $forced_pricevar = false, $forced_weightvar = false, $forced_refvar = false, $ref_ext = '')
+	public function createProductCombination(User $user, Product $product, array $combinations, array $variations, $price_var_percent = false, $forced_pricevar = false, $forced_weightvar = false, $forced_refvar = false, $ref_ext = '', $clone_categories = false)
 	{
 		global $conf;
 
@@ -957,6 +959,16 @@ class ProductCombination
 		}
 
 		$newcomb->fk_product_child = $newproduct->id;
+
+		if ($clone_categories) {
+			$clone_result = $newproduct->cloneCategories($product->id, $newproduct->id);
+			if ($clone_result < 0) {
+				$this->error = $newproduct->error;
+				$this->errors = $newproduct->errors;
+				$this->db->rollback();
+				return -1;
+			}
+		}
 
 		if ($newcomb->update($user) < 0) {
 			$this->error = $newcomb->error;
