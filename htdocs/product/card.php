@@ -2947,6 +2947,11 @@ if ($action != 'create' && $action != 'edit') {
 				print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER["PHP_SELF"].'?action=edit&token='.newToken().'&id='.$object->id, '', $usercancreate);
 			}
 
+			// Barcode
+			if (isModEnabled('barcode')) {
+				print dolGetButtonAction('', $langs->trans('BarCodePrintsheet'), 'default', DOL_URL_ROOT . '/barcode/printsheet.php?productid=' . $object->id . '&selectorforbarcode=fillfromproduct&submitproduct=1', '', $user->hasRight('barcode', 'read'));
+			}
+
 			if (!isset($object->no_button_copy) || $object->no_button_copy != 1) {
 				if (!empty($conf->use_javascript_ajax) && empty($conf->dol_use_jmobile)) {
 					$cloneProductUrl = '';
