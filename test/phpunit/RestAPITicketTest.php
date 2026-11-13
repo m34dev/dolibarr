@@ -222,6 +222,45 @@ class RestAPITicketTest extends AbstractRestAPITest
 	}
 
 	/**
+	 * Add a message with attachments to a ticket: a file with executable content must be renamed with .noexe
+	 *
+	 * @return void
+	 */
+	public function testRestTicketNewMessageAttachmentsNoExe()
+	{
+		global $conf;
+
+		$test = "Add a message with attachments to a ticket";
+
+		$ticket_id = $this->createTicket($test);
+		$result = $this->getUrl('tickets/'.$ticket_id, $test);
+		$ref = $result['content']['ref'];
+		$this->assertNotEmpty($ref, "$test Ref of ticket must not be empty");
+
+		$txtname = 'testRestTicket'.mt_rand().'.txt';
+		$txtcontent = 'Content of the text attachment';
+		$phpname = 'testRestTicket'.mt_rand().'.php';
+		$data = array(
+			"track_id" => $result['content']['track_id'],
+			"message" => "Message with attachments added via the REST API",
+			"attachments" => array(
+				array("filename" => $txtname, "filecontent" => base64_encode($txtcontent), "fileencoding" => "base64"),
+				array("filename" => $phpname, "filecontent" => base64_encode("<?php echo 'test';"), "fileencoding" => "base64"),
+			),
+		);
+		$result = $this->getUrl('tickets/newmessage', $test, 'POST', $data);
+		$this->assertEquals(200, $result['http_code'], "$test HTTP code must be 200");
+
+		$destdir = $conf->ticket->dir_output.'/'.$ref;
+		$this->assertFileExists($destdir.'/'.$txtname, "$test The text attachment must be saved");
+		$this->assertEquals($txtcontent, file_get_contents($destdir.'/'.$txtname), "$test The text attachment must have the sent content");
+		if (!getDolGlobalString('MAIN_DOCUMENT_IS_OUTSIDE_WEBROOT_SO_NOEXE_NOT_REQUIRED')) {
+			$this->assertFileExists($destdir.'/'.$phpname.'.noexe', "$test The php attachment must be saved with .noexe");
+			$this->assertFileNotExistsCompat($destdir.'/'.$phpname, "$test The php attachment must not be saved with its executable name");
+		}
+	}
+
+	/**
 	 * Unlink a contact of a ticket that does not exist
 	 *
 	 * @return void
