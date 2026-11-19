@@ -1,7 +1,7 @@
 <?php
 /* Copyright (C) 2016   Laurent Destailleur     <eldy@users.sourceforge.net>
  * Copyright (C) 2025		MDW					<mdeweerd@users.noreply.github.com>
- * Copyright (C) 2025	William Mead			<william@m34d.com>
+ * Copyright (C) 2025-2026	William Mead			<william@m34d.com>
  * Copyright (C) 2025       Frédéric France         <frederic.france@free.fr>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -360,6 +360,110 @@ class Warehouses extends DolibarrApi
 				'message' => 'Warehouse deleted'
 			)
 		);
+	}
+
+	/**
+	 * Close a warehouse
+	 *
+	 * Set the status of the warehouse to closed, so it can no longer be used for stock movements.
+	 *
+	 * @since	25.0.0	Initial implementation
+	 *
+	 * @param	int		$id		ID of warehouse to close
+	 * @return	Object			Updated warehouse
+	 *
+	 * @url	POST {id}/close
+	 *
+	 * @throws RestException 304 Warehouse already closed
+	 * @throws RestException 400 Bad Request
+	 * @throws RestException 403 Not allowed
+	 * @throws RestException 404 Not found
+	 * @throws RestException 500 Internal Server Error
+	 */
+	public function close($id)
+	{
+		return $this->setWarehouseStatus($id, Entrepot::STATUS_CLOSED);
+	}
+
+	/**
+	 * Open a warehouse
+	 *
+	 * Set the status of the warehouse to open, so it can be used again for stock movements.
+	 *
+	 * If you get a bad value for param status check, provide this in body
+	 * {
+	 *   "status": 1
+	 * }
+	 *
+	 * @since	25.0.0	Initial implementation
+	 *
+	 * @param	int		$id		ID of warehouse to open
+	 * @param	int		$status	1=Open for any movement, 2=Open for internal movements only (stock transfers and corrections, needs option ENTREPOT_EXTRA_STATUS) {@choice 1,2}
+	 * @return	Object			Updated warehouse
+	 *
+	 * @url	POST {id}/open
+	 *
+	 * @throws RestException 304 Warehouse already open with this status
+	 * @throws RestException 400 Bad Request
+	 * @throws RestException 403 Not allowed
+	 * @throws RestException 404 Not found
+	 * @throws RestException 500 Internal Server Error
+	 */
+	public function open($id, $status = 1)
+	{
+		$status = (int) $status;
+		if ($status != Entrepot::STATUS_OPEN_ALL && $status != Entrepot::STATUS_OPEN_INTERNAL) {
+			throw new RestException(400, 'Bad value for status, must be 1 or 2');
+		}
+		if ($status == Entrepot::STATUS_OPEN_INTERNAL && !getDolGlobalString('ENTREPOT_EXTRA_STATUS')) {
+			throw new RestException(400, 'Status 2 (open for internal movements only) needs option ENTREPOT_EXTRA_STATUS');
+		}
+
+		return $this->setWarehouseStatus($id, $status);
+	}
+
+	/**
+	 * Change the status of a warehouse
+	 *
+	 * @param	int		$id		ID of warehouse
+	 * @param	int		$status	New status (Entrepot::STATUS_xxx)
+	 * @return	Object			Updated warehouse
+	 *
+	 * @throws RestException 304 Warehouse already has this status
+	 * @throws RestException 400 Bad Request
+	 * @throws RestException 403 Not allowed
+	 * @throws RestException 404 Not found
+	 * @throws RestException 500 Internal Server Error
+	 */
+	private function setWarehouseStatus($id, $status)
+	{
+		if (!DolibarrApiAccess::$user->hasRight('stock', 'creer')) {
+			throw new RestException(403);
+		}
+		if ($id == 0) {
+			throw new RestException(400, 'No warehouse with id=0 can exist');
+		}
+		$result = $this->warehouse->fetch($id);
+		if ($result < 0) {
+			throw new RestException(500, 'Error when retrieving warehouse: '.$this->warehouse->errorsToString());
+		} elseif ($result == 0) {
+			throw new RestException(404, 'warehouse not found');
+		}
+
+		if (!DolibarrApi::_checkAccessToResource('stock', $this->warehouse->id, 'entrepot')) {
+			throw new RestException(403, 'Access not allowed for login '.DolibarrApiAccess::$user->login);
+		}
+
+		if ((int) $this->warehouse->status == $status) {
+			throw new RestException(304, 'Error nothing done. The warehouse already has this status');
+		}
+
+		$this->warehouse->status = $status;
+		if ($this->warehouse->update($this->warehouse->id, DolibarrApiAccess::$user) <= 0) {
+			throw new RestException(500, 'Error when changing status of warehouse: '.$this->warehouse->errorsToString());
+		}
+
+		return $this->get($this->warehouse->id);
 	}
 
 	/**
